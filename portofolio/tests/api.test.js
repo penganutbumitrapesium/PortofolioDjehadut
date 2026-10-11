@@ -180,3 +180,34 @@ test('kontak: dibatasi 5 pesan per 10 menit untuk satu IP', async () => {
   }
   assert.equal(last.statusCode, 429);
 });
+
+/* ---------- Berkas yang dirujuk halaman ---------- */
+
+test('semua berkas lokal yang dirujuk index.html benar-benar ada', () => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const publicDir = path.join(__dirname, '..', 'public');
+  const html = fs.readFileSync(path.join(publicDir, 'index.html'), 'utf8');
+
+  const refs = new Set();
+  for (const match of html.matchAll(/\b(?:src|href)="([^"#?]+)"/g)) refs.add(match[1]);
+  for (const match of html.matchAll(/\bsrcset="([^"]+)"/g)) {
+    for (const part of match[1].split(',')) refs.add(part.trim().split(/\s+/)[0]);
+  }
+
+  const local = [...refs].filter((r) => !/^(https?:|mailto:|data:)/.test(r));
+  assert.ok(local.length >= 6, 'seharusnya ada beberapa berkas lokal yang dirujuk');
+  for (const ref of local) {
+    assert.ok(fs.existsSync(path.join(publicDir, ref)), `berkas tidak ditemukan: public/${ref}`);
+  }
+});
+
+test('teks alternatif foto ada di dua bahasa', () => {
+  global.window = {};
+  delete require.cache[require.resolve('../public/js/i18n.js')];
+  require('../public/js/i18n.js');
+  const { dict } = global.window.I18N;
+  assert.ok(dict.id['hero.photo.alt'].length > 20);
+  assert.ok(dict.en['hero.photo.alt'].length > 20);
+  delete global.window;
+});

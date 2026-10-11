@@ -319,6 +319,10 @@ ol {
   font-weight: 500;
   line-height: 0.92;
   letter-spacing: -0.025em;
+  /* Garis rambut huruf Didone sangat tipis di ukuran besar. Nilai opsz yang lebih
+     rendah menebalkannya sedikit supaya huruf tidak terlihat terputus. */
+  font-optical-sizing: none;
+  font-variation-settings: "opsz" 40;
 }
 
 .hero-name .line {
@@ -364,6 +368,118 @@ ol {
   }
   to {
     transform: scaleX(1);
+  }
+}
+
+/* ---------- Potret di hero ---------- */
+
+.hero-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) clamp(150px, 30%, 400px);
+  gap: clamp(1.25rem, 4vw, 3.5rem);
+  align-items: end;
+}
+
+.hero-portrait {
+  position: relative;
+  width: 100%;
+  margin: 0;
+  justify-self: end;
+  transform: perspective(900px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+/* Bingkai gold yang bergeser ke kanan atas, seperti bingkai galeri */
+.hero-portrait::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--gold);
+  transform: translate(14px, -14px);
+  animation: frame-in 1s 1.2s var(--ease) both;
+}
+
+.portrait-frame {
+  position: relative;
+  z-index: 1;
+  aspect-ratio: 3 / 4;
+  overflow: hidden;
+  background: #0b0907;
+  animation: curtain 1.35s 0.55s var(--ease) both;
+}
+
+.portrait-frame picture {
+  display: block;
+  height: 100%;
+  animation: settle 1.9s 0.55s var(--ease) both;
+}
+
+.portrait-frame img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: translate3d(var(--px, 0px), var(--py, 0px), 0) scale(1.12);
+  will-change: transform;
+}
+
+/* Garis tipis gold di dalam foto */
+.portrait-frame::before {
+  content: "";
+  position: absolute;
+  inset: 10px;
+  z-index: 2;
+  border: 1px solid color-mix(in srgb, var(--gold) 55%, transparent);
+  pointer-events: none;
+}
+
+/* Cahaya gold yang mengikuti kursor, seperti lampu studio */
+.portrait-frame::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: radial-gradient(
+    380px circle at var(--mx, 70%) var(--my, 28%),
+    rgba(235, 207, 132, 0.22),
+    transparent 62%
+  );
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+}
+
+.portrait-frame:hover::after {
+  opacity: 1;
+}
+
+@keyframes curtain {
+  from {
+    clip-path: inset(100% 0 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@keyframes settle {
+  from {
+    transform: scale(1.18);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+@keyframes frame-in {
+  from {
+    opacity: 0;
+    transform: translate(0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate(14px, -14px);
   }
 }
 
@@ -1137,6 +1253,23 @@ html[data-theme="light"] .field [aria-invalid="true"] {
   }
 }
 
+@media (max-width: 600px) {
+  .hero-top {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2rem;
+  }
+
+  .hero-portrait {
+    width: min(78%, 340px);
+    justify-self: start;
+    margin-left: 0;
+  }
+
+  .hero-portrait::before {
+    transform: translate(10px, -10px);
+  }
+}
+
 @media (max-width: 620px) {
   .header-inner {
     gap: 0.75rem;
@@ -1202,6 +1335,23 @@ html[data-theme="light"] .field [aria-invalid="true"] {
 
   .hero-name .line-inner,
   .gold-rule {
+    transform: none !important;
+  }
+
+  .portrait-frame {
+    clip-path: none !important;
+  }
+
+  .hero-portrait {
+    transform: none !important;
+  }
+
+  .hero-portrait::before {
+    opacity: 1 !important;
+    transform: translate(14px, -14px) !important;
+  }
+
+  .portrait-frame picture {
     transform: none !important;
   }
 }

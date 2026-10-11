@@ -37,6 +37,7 @@
       'hero.side.l2': 'WordPress',
       'hero.side.l3': 'Aplikasi web',
       'hero.side.l4': 'Copywriting',
+      'hero.photo.alt': 'Potret Fransisco Roberto Djehadut duduk di kursi tinggi, mengenakan blazer hitam dan jeans biru muda, dengan latar studio gelap',
 
       'svc.title': 'Empat hal yang bisa saya kerjakan',
       'svc.intro': 'Setiap layanan dijelaskan dengan bahasa sehari-hari. Harga dibicarakan setelah kebutuhanmu jelas, tanpa paket yang dipaksakan.',
@@ -168,6 +169,7 @@
       'hero.side.l2': 'WordPress',
       'hero.side.l3': 'Web apps',
       'hero.side.l4': 'Copywriting',
+      'hero.photo.alt': 'Portrait of Fransisco Roberto Djehadut seated on a stool, wearing a black blazer and light blue jeans, against a dark studio backdrop',
 
       'svc.title': 'Four things I can do for you',
       'svc.intro': 'Every service is explained in everyday language. Pricing is discussed once your needs are clear, with no packages forced on you.',

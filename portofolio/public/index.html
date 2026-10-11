@@ -71,11 +71,26 @@
     <!-- HERO -->
     <section class="hero" id="atas" aria-labelledby="judul-nama">
       <div class="wrap">
-        <h1 class="hero-name" id="judul-nama">
-          <span class="line"><span class="line-inner">Fransisco</span></span>
-          <span class="line"><span class="line-inner">Roberto</span></span>
-          <span class="line"><span class="line-inner">Djehadut</span></span>
-        </h1>
+        <div class="hero-top">
+          <h1 class="hero-name" id="judul-nama">
+            <span class="line"><span class="line-inner">Fransisco</span></span>
+            <span class="line"><span class="line-inner">Roberto</span></span>
+            <span class="line"><span class="line-inner">Djehadut</span></span>
+          </h1>
+
+          <figure class="hero-portrait" id="portrait">
+            <div class="portrait-frame">
+              <picture>
+                <source type="image/webp"
+                        srcset="img/hin-480.webp 480w, img/hin-800.webp 800w, img/hin-1100.webp 1100w"
+                        sizes="(max-width: 600px) 80vw, 400px">
+                <img src="img/hin-800.jpg" width="800" height="1067" decoding="async" fetchpriority="high"
+                     alt="Potret Fransisco Roberto Djehadut duduk di kursi tinggi, mengenakan blazer hitam dan jeans biru muda, dengan latar studio gelap"
+                     data-i18n-attr="alt:hero.photo.alt">
+              </picture>
+            </div>
+          </figure>
+        </div>
         <div class="gold-rule" aria-hidden="true"></div>
 
         <div class="hero-grid">
@@ -297,5 +312,6 @@
 
   <script src="js/i18n.js" defer></script>
   <script src="js/main.js" defer></script>
+  <script src="js/portrait.js" defer></script>
 </body>
 </html>

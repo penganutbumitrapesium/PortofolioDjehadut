@@ -19,10 +19,12 @@ portofolio/
 ├─ public/
 │  ├─ index.html
 │  ├─ css/style.css
+│  ├─ img/           foto profil (WebP dan JPEG, tiga ukuran)
 │  └─ js/
 │     ├─ boot.js     menentukan tema dan bahasa sebelum halaman digambar
 │     ├─ i18n.js     kamus teks tetap dua bahasa
-│     └─ main.js     logika halaman
+│     ├─ main.js     logika halaman
+│     └─ portrait.js gerak halus foto di hero (kursor, miring, cahaya, gulir)
 ├─ tests/api.test.js uji otomatis (termasuk cek kelengkapan terjemahan)
 ├─ dev-server.js     server lokal tanpa akun Vercel
 ├─ vercel.json       pengaturan Vercel (folder output, header keamanan)
@@ -56,6 +58,12 @@ Terjemahannya ditulis manual, bukan terjemahan mesin saat halaman dibuka, jadi k
 
 > Nama perusahaan klien sengaja tidak ditulis di proyek RUN System. Tambahkan hanya jika perusahaan mengizinkan.
 > Hasil proyek ditulis tanpa angka karangan. Kalau punya angka nyata, tambahkan di kolom `outcome`.
+
+## Mengganti foto di hero
+
+Foto ada di `public/img/` dalam rasio 3:4 (`hin-480.webp`, `hin-800.webp`, `hin-1100.webp`, dan `hin-800.jpg`). Untuk menggantinya, siapkan foto baru dengan rasio 3:4, simpan dengan nama dan ukuran yang sama, lalu timpa file lama. Foto yang sudah dipakai dibersihkan dari metadata (lokasi dan data kamera), jadi lakukan hal yang sama untuk foto penggantinya. Teks alternatif foto untuk pembaca layar ada di `public/js/i18n.js` (kunci `hero.photo.alt`).
+
+Gerak foto otomatis mati bagi pengunjung yang mengaktifkan "kurangi gerakan" di perangkatnya, dan efek kursor hanya jalan di perangkat yang memakai mouse.
 
 ## Menjalankan di laptop
 
