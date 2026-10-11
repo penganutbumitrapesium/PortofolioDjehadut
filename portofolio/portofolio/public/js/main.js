@@ -2,14 +2,22 @@
   'use strict';
 
   const $ = (selector, root = document) => root.querySelector(selector);
+  const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
   const pageLoadedAt = Date.now();
 
+  const SITE_EMAIL = 'djehadutbss@gmail.com';
+
   const state = {
+    lang: document.documentElement.lang === 'en' ? 'en' : 'id',
     projects: [],
     categories: [],
     filter: 'semua',
     lastFocus: null,
+    loadToken: 0,
   };
+
+  // Terjemahan teks tetap, dengan isian variabel seperti {n}.
+  const tr = (key, vars) => window.I18N.t(state.lang, key, vars);
 
   /* ---------- Pembantu ---------- */
 
@@ -51,14 +59,17 @@
 
   const themeBtn = $('#theme-toggle');
 
+  function refreshThemeButton() {
+    const light = document.documentElement.getAttribute('data-theme') === 'light';
+    themeBtn.setAttribute('aria-label', tr(light ? 'ui.theme.toDark' : 'ui.theme.toLight'));
+  }
+
   function applyTheme(theme) {
     document.documentElement.setAttribute('data-theme', theme);
     const meta = $('meta[name="theme-color"]');
     if (meta) meta.setAttribute('content', theme === 'light' ? '#ffffff' : '#000000');
-    themeBtn.setAttribute('aria-label', theme === 'light' ? 'Ganti ke mode gelap' : 'Ganti ke mode terang');
+    refreshThemeButton();
   }
-
-  applyTheme(document.documentElement.getAttribute('data-theme') || 'dark');
 
   themeBtn.addEventListener('click', () => {
     const next = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
@@ -75,10 +86,15 @@
   const header = $('#site-header');
   const menuBtn = $('#menu-toggle');
 
+  function refreshMenuButton() {
+    const open = header.classList.contains('nav-open');
+    menuBtn.textContent = tr(open ? 'ui.menuClose' : 'ui.menu');
+  }
+
   function setMenu(open) {
     header.classList.toggle('nav-open', open);
     menuBtn.setAttribute('aria-expanded', String(open));
-    menuBtn.textContent = open ? 'Tutup' : 'Menu';
+    refreshMenuButton();
   }
 
   menuBtn.addEventListener('click', () => setMenu(!header.classList.contains('nav-open')));
@@ -92,14 +108,87 @@
     }
   });
 
+  /* ---------- Menyorot menu sesuai bagian yang sedang dibaca ---------- */
+
+  function watchSections() {
+    if (!('IntersectionObserver' in window)) return;
+    const links = $$('.nav-links a');
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+          for (const link of links) {
+            const active = link.getAttribute('href') === `#${entry.target.id}`;
+            link.classList.toggle('is-active', active);
+            if (active) link.setAttribute('aria-current', 'true');
+            else link.removeAttribute('aria-current');
+          }
+        }
+      },
+      { rootMargin: '-45% 0px -50% 0px' }
+    );
+    for (const link of links) {
+      const target = $(link.getAttribute('href'));
+      if (target) observer.observe(target);
+    }
+  }
+
+  /* ---------- Bahasa ---------- */
+
+  function applyStaticText() {
+    document.documentElement.lang = state.lang;
+
+    for (const el of $$('[data-i18n]')) el.textContent = tr(el.dataset.i18n);
+
+    for (const el of $$('[data-i18n-attr]')) {
+      for (const pair of el.dataset.i18nAttr.split(';')) {
+        const [attr, key] = pair.split(':').map((s) => s.trim());
+        if (attr && key) el.setAttribute(attr, tr(key));
+      }
+    }
+
+    document.title = tr('meta.title');
+    const description = $('meta[name="description"]');
+    if (description) description.setAttribute('content', tr('meta.desc'));
+    const ogTitle = $('meta[property="og:title"]');
+    if (ogTitle) ogTitle.setAttribute('content', tr('meta.title'));
+    const ogDesc = $('meta[property="og:description"]');
+    if (ogDesc) ogDesc.setAttribute('content', tr('meta.desc'));
+    const ogLocale = $('meta[property="og:locale"]');
+    if (ogLocale) ogLocale.setAttribute('content', state.lang === 'en' ? 'en_US' : 'id_ID');
+
+    for (const btn of $$('.lang-switch button')) {
+      btn.setAttribute('aria-pressed', String(btn.dataset.lang === state.lang));
+    }
+
+    refreshThemeButton();
+    refreshMenuButton();
+  }
+
+  async function setLanguage(next) {
+    if (next === state.lang) return;
+    state.lang = next;
+    try {
+      localStorage.setItem('lang', next);
+    } catch (err) {
+      /* abaikan */
+    }
+    applyStaticText();
+    setFormStatus('', '');
+    await Promise.all([loadSite(), loadProjects()]);
+  }
+
+  for (const btn of $$('.lang-switch button')) {
+    btn.addEventListener('click', () => setLanguage(btn.dataset.lang));
+  }
+
   /* ---------- Data situs (kontak dan tautan sosial) ---------- */
 
   async function loadSite() {
     try {
-      const data = await getJSON('/api/site');
+      const data = await getJSON(`/api/site?lang=${state.lang}`);
       if (!data.links || !data.links.length) return;
-      const list = $('#contact-links');
-      list.replaceChildren(
+      $('#contact-links').replaceChildren(
         ...data.links.map((link) =>
           h(
             'li',
@@ -126,8 +215,7 @@
   const statusEl = $('#projects-status');
 
   function renderFilters() {
-    const total = state.projects.length;
-    const items = [{ id: 'semua', label: 'Semua', count: total }, ...state.categories];
+    const items = [{ id: 'semua', label: tr('ui.all'), count: state.projects.length }, ...state.categories];
     filtersEl.replaceChildren(
       ...items.map((item) =>
         h(
@@ -157,8 +245,8 @@
         : state.projects.filter((p) => p.categories.includes(state.filter));
 
     statusEl.textContent = visible.length
-      ? `Menampilkan ${visible.length} dari ${state.projects.length} proyek.`
-      : 'Belum ada proyek di kategori ini.';
+      ? tr('ui.showing', { n: visible.length, total: state.projects.length })
+      : tr('ui.none');
 
     listEl.replaceChildren(
       ...visible.map((p) =>
@@ -185,21 +273,24 @@
   }
 
   async function loadProjects() {
-    statusEl.textContent = 'Memuat proyek...';
+    const token = ++state.loadToken;
+    statusEl.textContent = tr('ui.loading');
     try {
-      const data = await getJSON('/api/projects');
+      const data = await getJSON(`/api/projects?lang=${state.lang}`);
+      if (token !== state.loadToken) return; // ada permintaan yang lebih baru
       state.projects = data.projects || [];
       state.categories = (data.categories || []).filter((c) => c.count > 0);
+      if (state.filter !== 'semua' && !state.categories.some((c) => c.id === state.filter)) {
+        state.filter = 'semua';
+      }
       renderFilters();
       renderList();
       openFromHash();
     } catch (err) {
+      if (token !== state.loadToken) return;
       listEl.replaceChildren();
       filtersEl.replaceChildren();
-      statusEl.replaceChildren(
-        'Proyek belum bisa dimuat. Periksa koneksi lalu coba lagi.',
-        h('button', { type: 'button', text: 'Coba lagi', onclick: loadProjects })
-      );
+      statusEl.replaceChildren(tr('ui.loadfail'), h('button', { type: 'button', text: tr('ui.retry'), onclick: loadProjects }));
     }
   }
 
@@ -215,33 +306,33 @@
   function buildPanel(p) {
     const links = [];
     if (p.links && p.links.demo) {
-      links.push(h('a', { class: 'btn btn-primary', href: p.links.demo, target: '_blank', rel: 'noopener noreferrer', text: 'Buka demo' }));
+      links.push(h('a', { class: 'btn btn-primary', href: p.links.demo, target: '_blank', rel: 'noopener noreferrer', text: tr('dlg.demo') }));
     }
     if (p.links && p.links.repo) {
-      links.push(h('a', { class: 'btn btn-ghost', href: p.links.repo, target: '_blank', rel: 'noopener noreferrer', text: 'Lihat kode' }));
+      links.push(h('a', { class: 'btn btn-ghost', href: p.links.repo, target: '_blank', rel: 'noopener noreferrer', text: tr('dlg.repo') }));
     }
-    links.push(h('a', { class: 'btn btn-ghost', href: '#kontak', text: 'Saya butuh yang serupa', onclick: () => closeDialog() }));
+    links.push(h('a', { class: 'btn btn-ghost', href: '#kontak', text: tr('dlg.similar'), onclick: () => closeDialog() }));
 
     return [
       h(
         'div',
         { class: 'panel-top' },
         h('h2', { id: 'dlg-title', text: p.title }),
-        h('button', { class: 'close-btn', type: 'button', text: 'Tutup', onclick: () => closeDialog() })
+        h('button', { class: 'close-btn', type: 'button', text: tr('dlg.close'), onclick: () => closeDialog() })
       ),
       h('p', { class: 'lead-sum', text: p.summary }),
       h(
         'dl',
         { class: 'meta' },
-        h('div', {}, h('dt', { text: 'Peran' }), h('dd', { text: p.role })),
-        h('div', {}, h('dt', { text: 'Tahun' }), h('dd', { text: String(p.year) })),
-        h('div', {}, h('dt', { text: 'Status' }), h('dd', { text: p.status }))
+        h('div', {}, h('dt', { text: tr('dlg.role') }), h('dd', { text: p.role })),
+        h('div', {}, h('dt', { text: tr('dlg.year') }), h('dd', { text: String(p.year) })),
+        h('div', {}, h('dt', { text: tr('dlg.status') }), h('dd', { text: p.status }))
       ),
-      section('Masalah', h('p', { text: p.problem })),
-      section('Solusi', h('p', { text: p.solution })),
-      section('Fitur dan isi utama', h('ul', { class: 'feature-list' }, p.features.map((f) => h('li', { text: f })))),
-      section('Alat dan teknologi', h('ul', { class: 'tags' }, p.stack.map((s) => h('li', { text: s })))),
-      section('Hasil', h('p', { text: p.outcome })),
+      section(tr('dlg.problem'), h('p', { text: p.problem })),
+      section(tr('dlg.solution'), h('p', { text: p.solution })),
+      section(tr('dlg.features'), h('ul', { class: 'feature-list' }, p.features.map((f) => h('li', { text: f })))),
+      section(tr('dlg.stack'), h('ul', { class: 'tags' }, p.stack.map((s) => h('li', { text: s })))),
+      section(tr('dlg.outcome'), h('p', { text: p.outcome })),
       p.note ? h('p', { class: 'note', text: p.note }) : null,
       h('div', { class: 'panel-links' }, links),
     ];
@@ -256,7 +347,7 @@
     if (!dialog.open) dialog.showModal();
     document.body.classList.add('dialog-open');
     try {
-      history.replaceState(null, '', `#proyek-${slug}`);
+      history.replaceState(null, '', `${location.pathname}${location.search}#proyek-${slug}`);
     } catch (err) {
       /* abaikan */
     }
@@ -270,7 +361,7 @@
     document.body.classList.remove('dialog-open');
     if (location.hash.startsWith('#proyek-')) {
       try {
-        history.replaceState(null, '', '#proyek');
+        history.replaceState(null, '', `${location.pathname}${location.search}#proyek`);
       } catch (err) {
         /* abaikan */
       }
@@ -285,7 +376,7 @@
 
   function openFromHash() {
     const match = location.hash.match(/^#proyek-(.+)$/);
-    if (match) openProject(decodeURIComponent(match[1]));
+    if (match && !dialog.open) openProject(decodeURIComponent(match[1]));
   }
 
   /* ---------- Formulir kontak ---------- */
@@ -294,15 +385,20 @@
   const submitBtn = $('#form-submit');
   const statusMsg = $('#form-status');
 
-  function setStatus(message, kind) {
+  function setFormStatus(message, kind) {
     statusMsg.className = `form-status${kind ? ` is-${kind}` : ''}`;
     statusMsg.textContent = message;
   }
 
   function mailtoFallback(data) {
-    const subject = encodeURIComponent(`Proyek ${data.service || ''} dari ${data.name || ''}`.trim());
+    const subject = encodeURIComponent(tr('mail.subject', { service: data.service || '', name: data.name || '' }).trim());
     const body = encodeURIComponent(`${data.message || ''}\n\n${data.name || ''}\n${data.email || ''}`);
-    return `mailto:djehadutbss@gmail.com?subject=${subject}&body=${body}`;
+    return `mailto:${SITE_EMAIL}?subject=${subject}&body=${body}`;
+  }
+
+  function showError(prefix, data) {
+    statusMsg.className = 'form-status is-error';
+    statusMsg.replaceChildren(`${prefix} `, h('a', { href: mailtoFallback(data), text: tr('form.mail') }));
   }
 
   form.addEventListener('submit', async (e) => {
@@ -315,15 +411,16 @@
         firstBad.setAttribute('aria-invalid', 'true');
         firstBad.focus();
       }
-      setStatus('Lengkapi dulu kolom yang ditandai, lalu kirim lagi.', 'error');
+      setFormStatus(tr('form.invalid'), 'error');
       return;
     }
 
     const data = Object.fromEntries(new FormData(form).entries());
     data.elapsed = Date.now() - pageLoadedAt;
+    data.lang = state.lang;
 
     submitBtn.disabled = true;
-    setStatus('Mengirim pesan...', '');
+    setFormStatus(tr('form.sending'), '');
 
     try {
       const res = await fetch('/api/contact', {
@@ -335,7 +432,7 @@
 
       if (res.ok && result.ok) {
         form.reset();
-        setStatus('Terima kasih, pesanmu sudah terkirim. Saya akan membalas lewat email.', 'ok');
+        setFormStatus(tr('form.ok'), 'ok');
         return;
       }
 
@@ -346,17 +443,9 @@
           field.focus();
         }
       }
-      statusMsg.className = 'form-status is-error';
-      statusMsg.replaceChildren(
-        `${result.message || 'Pesan belum terkirim.'} `,
-        h('a', { href: mailtoFallback(data), text: 'Kirim lewat aplikasi email' })
-      );
+      showError(result.message || tr('form.generic'), data);
     } catch (err) {
-      statusMsg.className = 'form-status is-error';
-      statusMsg.replaceChildren(
-        'Koneksi bermasalah, pesan belum terkirim. ',
-        h('a', { href: mailtoFallback(data), text: 'Kirim lewat aplikasi email' })
-      );
+      showError(tr('form.netfail'), data);
     } finally {
       submitBtn.disabled = false;
     }
@@ -365,6 +454,9 @@
   /* ---------- Mulai ---------- */
 
   $('#year').textContent = String(new Date().getFullYear());
+  applyTheme(document.documentElement.getAttribute('data-theme') || 'dark');
+  applyStaticText();
+  watchSections();
   loadSite();
   loadProjects();
 })();
